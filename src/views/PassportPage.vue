@@ -1,6 +1,7 @@
 <template>
   <div class="passport-container">
     <!-- Student Passport Card -->
+    {{ profile.fields }}
     <div class="passport-card" v-if="profile && profile.StudentID">
       <div class="card-body">
         <div class="student-info">
@@ -77,9 +78,12 @@ import { inject, onMounted, ref } from "vue";
 import axios from "axios";
 import QRCodeModal from "../components/QRCode.vue";
 import router from "../routes";
+import { useRoute } from "vue-router";
 
 const profile = inject("profile");
 const state = inject("state");
+
+const route = useRoute();
 
 // Modal State
 const isModalOpen = ref(false);
@@ -100,16 +104,17 @@ const closeQRModal = () => {
 };
 
 onMounted(() => {
+  console.log(route.params.stdID);
   if (!state.value.isAuthenticated) {
     router.push("/login");
   } else {
     const options = {
       method: "GET",
-      url: "https://ndb.3xbun.com/api/v2/tables/md4y4grpi2qzyd2/records",
+      url: "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/md4y4grpi2qzyd2/records",
       params: {
         offset: "0",
         limit: "25",
-        where: "",
+        where: `(StudentID, eq, ${route.params.stdID})`,
         viewId: "vw8cogyvicxn6vjt",
       },
       headers: {
@@ -120,7 +125,7 @@ onMounted(() => {
     axios
       .request(options)
       .then((res) => {
-        profile.value = res.data.list[0];
+        profile.value = res.data.records[0].fields;
       })
       .catch((err) => console.error(err));
   }

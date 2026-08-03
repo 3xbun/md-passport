@@ -33,9 +33,7 @@ const Azure = new PublicClientApplication({
 const handleResponse = (res) => {
   if (res !== null) {
     const account = {
-      Username: res.account.username
-        .toLowerCase()
-        .replace("@m.materdei.ac.th", ""),
+      Username: res.account.username.toLowerCase().split(".")[0],
       FullName: res.account.name.replace(/[0-9]/g, ""),
     };
 
