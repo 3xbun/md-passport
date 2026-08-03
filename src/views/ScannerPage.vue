@@ -89,6 +89,15 @@
             </div>
             <div class="results-row">
               <span class="row-label">
+                <i class="fa-duotone fa-solid fa-user-graduate"></i>
+                นักเรียน
+              </span>
+              <span class="row-value id-highlight">
+                {{ parent.studentFullName || "N/A" }}
+              </span>
+            </div>
+            <div class="results-row">
+              <span class="row-label">
                 <i class="fa-solid fa-duotone fa-user-shield"></i> ผู้ปกครอง
               </span>
               <span class="row-valueName">
@@ -124,6 +133,15 @@
               </span>
               <span class="row-value id-highlight">
                 {{ parent.Students?.fields?.StudentID || "N/A" }}
+              </span>
+            </div>
+            <div class="results-row">
+              <span class="row-label">
+                <i class="fa-duotone fa-solid fa-user-graduate"></i>
+                นักเรียน
+              </span>
+              <span class="row-value id-highlight">
+                {{ parent.studentFullName || "N/A" }}
               </span>
             </div>
             <div class="results-row">
@@ -164,10 +182,20 @@
           <div class="results-table">
             <div class="results-row">
               <span class="row-label">
-                <i class="fa-solid fa-duotone fa-id-card"></i> Student ID
+                <i class="fa-solid fa-duotone fa-id-card"></i>
+                เลขประจำตัวนักเรียน
               </span>
               <span class="row-value id-highlight">
                 {{ parent.Students?.fields?.StudentID || "N/A" }}
+              </span>
+            </div>
+            <div class="results-row">
+              <span class="row-label">
+                <i class="fa-duotone fa-solid fa-user-graduate"></i>
+                นักเรียน
+              </span>
+              <span class="row-value id-highlight">
+                {{ parent.studentFullName || "N/A" }}
               </span>
             </div>
             <div class="results-row">
