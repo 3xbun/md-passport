@@ -1,7 +1,7 @@
 <template>
   <div class="signInBtn btn drop-shadow" @click="login()">
     <img
-      src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/512px-Microsoft_logo.svg.png?20210729021049"
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/960px-Microsoft_logo.svg.png"
       alt=""
       class="logo"
     />
@@ -68,7 +68,7 @@ const login = () => {
   gap: 1em;
   justify-content: center;
   align-items: center;
-  color: var(--dark);
+  color: var(--bg-dark);
 }
 
 img {
