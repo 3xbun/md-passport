@@ -57,7 +57,7 @@
             </div>
           </div>
           <button @click="resetScanner" class="btn-reset btn-danger">
-            สแกนอีกครั้ง
+            สแกนคนต่อไป
           </button>
         </div>
 
@@ -155,7 +155,7 @@
           </div>
 
           <button @click="resetScanner" class="btn-reset btn-warning-action">
-            สแกนอีกครั้ง
+            สแกนคนต่อไป
           </button>
         </div>
 
