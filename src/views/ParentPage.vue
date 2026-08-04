@@ -125,7 +125,7 @@
     <!-- Parents Grid List -->
     <div v-else class="parents-list">
       <div
-        v-for="parent in filteredParents"
+        v-for="parent in paginatedParents"
         :key="parent.id"
         class="parent-row"
         :class="{ 'checked-border': parent.fields.Checked }"
@@ -190,12 +190,53 @@
         </div>
       </div>
     </div>
+
+    <!-- Pagination Footer -->
+    <div v-if="filteredParents.length > 0" class="pagination-footer">
+      <div class="pagination-info">
+        แสดง {{ pageStartIndex }} - {{ pageEndIndex }} จากทั้งหมด {{ filteredParents.length }} รายการ
+      </div>
+      
+      <div class="pagination-controls">
+        <button 
+          @click="prevPage" 
+          :disabled="currentPage === 1" 
+          class="page-btn nav-btn"
+          aria-label="Previous Page"
+        >
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        
+        <span class="page-indicator">
+          หน้า {{ currentPage }} / {{ totalPages }}
+        </span>
+
+        <button 
+          @click="nextPage" 
+          :disabled="currentPage === totalPages" 
+          class="page-btn nav-btn"
+          aria-label="Next Page"
+        >
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <div class="page-size-selector">
+        <span class="size-label">แสดงหน้าละ:</span>
+        <select v-model="itemsPerPage" class="size-select">
+          <option :value="10">10</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+          <option :value="100">100</option>
+        </select>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import axios from "axios";
-import { onMounted, ref, computed } from "vue";
+import { onMounted, ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -207,6 +248,15 @@ const goToScanner = () => {
 const isLoading = ref(true);
 const searchQuery = ref("");
 const statusFilter = ref("all");
+
+// Pagination state
+const itemsPerPage = ref(10);
+const currentPage = ref(1);
+
+// Reset page on filter or page-size changes
+watch([searchQuery, statusFilter, itemsPerPage], () => {
+  currentPage.value = 1;
+});
 
 const checkedInCount = computed(() => {
   return Parents.value.filter((p) => p.fields.Checked).length;
@@ -234,8 +284,7 @@ const filteredParents = computed(() => {
       const parentName = p.fields.FullName?.toLowerCase() || "";
       const relationship = p.fields.Relationship?.toLowerCase() || "";
       const studentId = p.fields.Students?.fields?.StudentID?.toLowerCase() || "";
-      const studentName =
-        p.fields.Students?.fields?.FullName?.toLowerCase() || "";
+      const studentName = p.fields.studentFullName?.toLowerCase() || "";
 
       return (
         parentName.includes(q) ||
@@ -250,6 +299,39 @@ const filteredParents = computed(() => {
       return nameA.localeCompare(nameB, "th");
     });
 });
+
+// Pagination computed properties and functions
+const totalPages = computed(() => {
+  return Math.ceil(filteredParents.value.length / itemsPerPage.value) || 1;
+});
+
+const paginatedParents = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredParents.value.slice(start, end);
+});
+
+const pageStartIndex = computed(() => {
+  if (filteredParents.value.length === 0) return 0;
+  return (currentPage.value - 1) * itemsPerPage.value + 1;
+});
+
+const pageEndIndex = computed(() => {
+  const end = currentPage.value * itemsPerPage.value;
+  return end > filteredParents.value.length ? filteredParents.value.length : end;
+});
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
+};
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+};
 
 const getRelationIcon = (rel) => {
   const r = rel?.toLowerCase() || "";
@@ -305,27 +387,32 @@ const toggleCheckIn = (parentRecord) => {
     });
 };
 
-onMounted(() => {
+onMounted(async () => {
   isLoading.value = true;
-  axios
-    .get(
-      "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records",
-      {
+  let allRecords = [];
+  let nextUrl = "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records?limit=100";
+
+  try {
+    while (nextUrl) {
+      const res = await axios.get(nextUrl, {
         headers: {
           "xc-token": "wU0uyFeODMGzOqqkIUethPYhnZn_FqXXgifuiXWu",
         },
-      },
-    )
-    .then((res) => {
-      Parents.value = res.data.records.map((record) => ({
-        ...record,
-        isUpdating: false, // Add reactivity state for inline updating
-      }));
-    })
-    .catch((err) => console.error(err))
-    .finally(() => {
-      isLoading.value = false;
-    });
+      });
+      if (res.data && res.data.records) {
+        allRecords = [...allRecords, ...res.data.records];
+      }
+      nextUrl = res.data.next;
+    }
+    Parents.value = allRecords.map((record) => ({
+      ...record,
+      isUpdating: false, // Add reactivity state for inline updating
+    }));
+  } catch (err) {
+    console.error(err);
+  } finally {
+    isLoading.value = false;
+  }
 });
 </script>
 
@@ -931,6 +1018,113 @@ onMounted(() => {
     flex: 1;
     text-align: center;
     padding: 0.5rem 0;
+  }
+}
+
+/* Pagination Styling */
+.pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(65, 76, 80, 0.12) 0%,
+    rgba(25, 36, 39, 0.3) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 1rem 1.5rem;
+  border-radius: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: #8a999d;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-btn {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #8a999d;
+  width: 36px;
+  height: 36px;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(56, 172, 231, 0.05);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--white);
+  min-width: 80px;
+  text-align: center;
+}
+
+.page-size-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.size-label {
+  font-size: 0.82rem;
+  color: #8a999d;
+}
+
+.size-select {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--white);
+  padding: 0.35rem 1.5rem 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a999d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 0.85rem;
+}
+
+.size-select:focus {
+  border-color: var(--primary);
+}
+
+@media (max-width: 600px) {
+  .pagination-footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.25rem 1rem;
+    gap: 0.85rem;
   }
 }
 </style>
