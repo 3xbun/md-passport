@@ -222,27 +222,33 @@ const checkedInPercentage = computed(() => {
 });
 
 const filteredParents = computed(() => {
-  return Parents.value.filter((p) => {
-    // Status filter
-    if (statusFilter.value === "checked" && !p.fields.Checked) return false;
-    if (statusFilter.value === "pending" && p.fields.Checked) return false;
+  return Parents.value
+    .filter((p) => {
+      // Status filter
+      if (statusFilter.value === "checked" && !p.fields.Checked) return false;
+      if (statusFilter.value === "pending" && p.fields.Checked) return false;
 
-    // Search query filter
-    if (!searchQuery.value) return true;
-    const q = searchQuery.value.toLowerCase().trim();
-    const parentName = p.fields.FullName?.toLowerCase() || "";
-    const relationship = p.fields.Relationship?.toLowerCase() || "";
-    const studentId = p.fields.Students?.fields?.StudentID?.toLowerCase() || "";
-    const studentName =
-      p.fields.Students?.fields?.FullName?.toLowerCase() || "";
+      // Search query filter
+      if (!searchQuery.value) return true;
+      const q = searchQuery.value.toLowerCase().trim();
+      const parentName = p.fields.FullName?.toLowerCase() || "";
+      const relationship = p.fields.Relationship?.toLowerCase() || "";
+      const studentId = p.fields.Students?.fields?.StudentID?.toLowerCase() || "";
+      const studentName =
+        p.fields.Students?.fields?.FullName?.toLowerCase() || "";
 
-    return (
-      parentName.includes(q) ||
-      relationship.includes(q) ||
-      studentId.includes(q) ||
-      studentName.includes(q)
-    );
-  });
+      return (
+        parentName.includes(q) ||
+        relationship.includes(q) ||
+        studentId.includes(q) ||
+        studentName.includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const nameA = a.fields?.FullName || "";
+      const nameB = b.fields?.FullName || "";
+      return nameA.localeCompare(nameB, "th");
+    });
 });
 
 const getRelationIcon = (rel) => {
