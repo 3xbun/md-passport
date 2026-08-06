@@ -5,12 +5,17 @@
       <div class="header-top-actions">
         <div class="header-badge">
           <i class="fa-solid fa-list-check"></i> MONITORING PORTAL
+          <span
+            class="live-pulse"
+            :class="{ 'is-refreshing': silentLoading }"
+            title="ระบบเชื่อมต่อแบบเรียลไทม์"
+          ></span>
         </div>
         <button @click="goToScanner" class="scan-nav-btn">
           <i class="fa-solid fa-qrcode"></i> ไปหน้าสแกน QR
         </button>
       </div>
-      <h1 class="monitor-title">ทะเบียนการเช็คอินผู้ปกครอง</h1>
+      <h1 class="monitor-title">ข้อมูลการเช็คอินผู้ปกครอง</h1>
       <p class="monitor-subtitle">
         แสดงข้อมูลการเช็คอินและสถานะของผู้ปกครองนักเรียนทั้งหมดแบบเรียลไทม์
       </p>
@@ -194,26 +199,27 @@
     <!-- Pagination Footer -->
     <div v-if="filteredParents.length > 0" class="pagination-footer">
       <div class="pagination-info">
-        แสดง {{ pageStartIndex }} - {{ pageEndIndex }} จากทั้งหมด {{ filteredParents.length }} รายการ
+        แสดง {{ pageStartIndex }} - {{ pageEndIndex }} จากทั้งหมด
+        {{ filteredParents.length }} รายการ
       </div>
-      
+
       <div class="pagination-controls">
-        <button 
-          @click="prevPage" 
-          :disabled="currentPage === 1" 
+        <button
+          @click="prevPage"
+          :disabled="currentPage === 1"
           class="page-btn nav-btn"
           aria-label="Previous Page"
         >
           <i class="fa-solid fa-chevron-left"></i>
         </button>
-        
+
         <span class="page-indicator">
           หน้า {{ currentPage }} / {{ totalPages }}
         </span>
 
-        <button 
-          @click="nextPage" 
-          :disabled="currentPage === totalPages" 
+        <button
+          @click="nextPage"
+          :disabled="currentPage === totalPages"
           class="page-btn nav-btn"
           aria-label="Next Page"
         >
@@ -236,7 +242,7 @@
 
 <script setup>
 import axios from "axios";
-import { onMounted, ref, computed, watch } from "vue";
+import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 
 const router = useRouter();
@@ -246,6 +252,7 @@ const goToScanner = () => {
   router.push("/passport/scan");
 };
 const isLoading = ref(true);
+const silentLoading = ref(false);
 const searchQuery = ref("");
 const statusFilter = ref("all");
 
@@ -283,7 +290,8 @@ const filteredParents = computed(() => {
       const q = searchQuery.value.toLowerCase().trim();
       const parentName = p.fields.FullName?.toLowerCase() || "";
       const relationship = p.fields.Relationship?.toLowerCase() || "";
-      const studentId = p.fields.Students?.fields?.StudentID?.toLowerCase() || "";
+      const studentId =
+        p.fields.Students?.fields?.StudentID?.toLowerCase() || "";
       const studentName = p.fields.studentFullName?.toLowerCase() || "";
 
       return (
@@ -318,7 +326,9 @@ const pageStartIndex = computed(() => {
 
 const pageEndIndex = computed(() => {
   const end = currentPage.value * itemsPerPage.value;
-  return end > filteredParents.value.length ? filteredParents.value.length : end;
+  return end > filteredParents.value.length
+    ? filteredParents.value.length
+    : end;
 });
 
 const prevPage = () => {
@@ -387,10 +397,16 @@ const toggleCheckIn = (parentRecord) => {
     });
 };
 
-onMounted(async () => {
-  isLoading.value = true;
+const fetchParentsData = async (silent = false) => {
+  if (!silent) {
+    isLoading.value = true;
+  } else {
+    silentLoading.value = true;
+  }
+
   let allRecords = [];
-  let nextUrl = "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records?limit=100";
+  let nextUrl =
+    "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records?limit=100";
 
   try {
     while (nextUrl) {
@@ -404,14 +420,49 @@ onMounted(async () => {
       }
       nextUrl = res.data.next;
     }
-    Parents.value = allRecords.map((record) => ({
-      ...record,
-      isUpdating: false, // Add reactivity state for inline updating
-    }));
+
+    // Merge new records safely to avoid disrupting inline updating state
+    const mergedParents = allRecords.map((record) => {
+      const existingParent = Parents.value.find((p) => p.id === record.id);
+      return {
+        ...record,
+        isUpdating: existingParent ? existingParent.isUpdating : false,
+        fields: {
+          ...record.fields,
+          Checked:
+            existingParent && existingParent.isUpdating
+              ? existingParent.fields.Checked
+              : record.fields.Checked,
+        },
+      };
+    });
+
+    Parents.value = mergedParents;
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching parents:", err);
   } finally {
-    isLoading.value = false;
+    if (!silent) {
+      isLoading.value = false;
+    } else {
+      silentLoading.value = false;
+    }
+  }
+};
+
+let pollInterval = null;
+
+onMounted(async () => {
+  await fetchParentsData(false);
+
+  // Poll in the background silently every 5 seconds for almost real-time updates
+  pollInterval = setInterval(() => {
+    fetchParentsData(true);
+  }, 5000);
+});
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
   }
 });
 </script>
@@ -1126,5 +1177,52 @@ onMounted(async () => {
     padding: 1.25rem 1rem;
     gap: 0.85rem;
   }
+}
+
+/* Real-time Indicator Pulse Styling */
+.live-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #2ecc71;
+  margin-left: 0.5rem;
+  position: relative;
+  box-shadow: 0 0 8px #2ecc71;
+  transition: all 0.3s ease;
+}
+
+.live-pulse::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(46, 204, 113, 0.4);
+  animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  opacity: 1;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  80%,
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.live-pulse.is-refreshing {
+  background-color: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.live-pulse.is-refreshing::after {
+  border-color: rgba(56, 172, 231, 0.4);
 }
 </style>
