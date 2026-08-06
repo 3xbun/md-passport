@@ -397,7 +397,12 @@ const toggleCheckIn = (parentRecord) => {
     });
 };
 
+const isFetching = ref(false);
+
 const fetchParentsData = async (silent = false) => {
+  if (isFetching.value) return;
+  isFetching.value = true;
+
   if (!silent) {
     isLoading.value = true;
   } else {
@@ -405,8 +410,8 @@ const fetchParentsData = async (silent = false) => {
   }
 
   let allRecords = [];
-  let nextUrl =
-    "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records?limit=100";
+  // Align with NocoDB's default page limit (25) to avoid offset mismatches on next pages
+  let nextUrl = "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records";
 
   try {
     while (nextUrl) {
@@ -421,8 +426,17 @@ const fetchParentsData = async (silent = false) => {
       nextUrl = res.data.next;
     }
 
+    // Deduplicate records by unique record id to be 100% robust
+    const uniqueRecordsMap = new Map();
+    allRecords.forEach((record) => {
+      if (record && record.id) {
+        uniqueRecordsMap.set(record.id, record);
+      }
+    });
+    const uniqueRecords = Array.from(uniqueRecordsMap.values());
+
     // Merge new records safely to avoid disrupting inline updating state
-    const mergedParents = allRecords.map((record) => {
+    const mergedParents = uniqueRecords.map((record) => {
       const existingParent = Parents.value.find((p) => p.id === record.id);
       return {
         ...record,
@@ -441,6 +455,7 @@ const fetchParentsData = async (silent = false) => {
   } catch (err) {
     console.error("Error fetching parents:", err);
   } finally {
+    isFetching.value = false;
     if (!silent) {
       isLoading.value = false;
     } else {
