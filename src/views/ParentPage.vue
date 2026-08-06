@@ -199,8 +199,8 @@
     <!-- Pagination Footer -->
     <div v-if="filteredParents.length > 0" class="pagination-footer">
       <div class="pagination-info">
-        แสดง {{ pageStartIndex }} - {{ pageEndIndex }} จากทั้งหมด
-        {{ filteredParents.length }} รายการ
+        แสดง {{ pageStartIndex }} - {{ pageEndIndex }} <br />
+        จากทั้งหมด {{ filteredParents.length }} รายการ
       </div>
 
       <div class="pagination-controls">
@@ -411,7 +411,8 @@ const fetchParentsData = async (silent = false) => {
 
   let allRecords = [];
   // Align with NocoDB's default page limit (25) to avoid offset mismatches on next pages
-  let nextUrl = "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records";
+  let nextUrl =
+    "https://ndb.3xbun.com/api/v3/data/pynnt7fm0gsgwlq/mtlg3m3ctl8sx6l/records";
 
   try {
     while (nextUrl) {
@@ -1089,11 +1090,9 @@ onUnmounted(() => {
 
 /* Pagination Styling */
 .pagination-footer {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
   background: linear-gradient(
     135deg,
     rgba(65, 76, 80, 0.12) 0%,
@@ -1109,12 +1108,14 @@ onUnmounted(() => {
   font-size: 0.85rem;
   color: #8a999d;
   font-weight: 500;
+  text-align: left;
 }
 
 .pagination-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .page-btn {
@@ -1146,13 +1147,16 @@ onUnmounted(() => {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--white);
-  min-width: 80px;
+  width: 110px; /* Locked width to prevent layout shifting when page digits increase (e.g., 1 to 10 or 100) */
   text-align: center;
+  display: inline-block;
+  user-select: none;
 }
 
 .page-size-selector {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
@@ -1169,6 +1173,7 @@ onUnmounted(() => {
   border-radius: 0.5rem;
   font-size: 0.82rem;
   font-weight: 600;
+  width: 75px; /* Locked width to prevent layout shifting on selection */
   cursor: pointer;
   outline: none;
   font-family: inherit;
@@ -1186,6 +1191,7 @@ onUnmounted(() => {
 
 @media (max-width: 600px) {
   .pagination-footer {
+    display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
